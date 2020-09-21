@@ -59,6 +59,11 @@ public class RestService {
 		} else {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This client was not found in the database");
 		}
+		if(oldTransaction.getBoardGame() != null && (oldTransaction.getBoardGame().getIdBoardGame() != newTransaction.getBoardGame().getIdBoardGame()))
+		{
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "You can't change the board game, create a new transaction if you want" +
+				" to change this");
+		}
 		int oldAmount = oldTransaction.getAmount() == null ? 0 : oldTransaction.getAmount();
 		int newAmount = newTransaction.getAmount() == null ? 0 : newTransaction.getAmount();
 		if (oldTransaction.isLendTransaction() && newTransaction.isSellTransaction()) {
