@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class HomePageController {
 
-	@GetMapping({ "/", "/index" })
+	@GetMapping({ "/index" })
 	public String showMainPage(){
 		return "STUDIA MAGISTERSKIE PROJEKT TIWPR, ARTUR BLOCH, 2020";
 	}
