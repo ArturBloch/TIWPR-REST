@@ -1,9 +1,9 @@
 package com.tiwpr.rest.models;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.*;
 import org.hibernate.envers.Audited;
+import org.springframework.hateoas.RepresentationModel;
+
 import javax.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +12,7 @@ import java.util.List;
 @Table(name = "klienci")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Audited
-public class Client {
+public class Client extends RepresentationModel<Client> {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,8 +25,8 @@ public class Client {
 
 	private String favouriteGameType;
 
+	@JsonIgnoreProperties({"client"})
 	@OneToMany(mappedBy = "client")
-	@JsonManagedReference(value="transaction-client")
 	private List<Transaction> transactionList = new ArrayList<>();
 
 	@Version

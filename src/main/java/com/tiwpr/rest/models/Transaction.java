@@ -1,11 +1,9 @@
 package com.tiwpr.rest.models;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.*;
 import org.hibernate.envers.Audited;
 import org.springframework.format.annotation.DateTimeFormat;
-
+import org.springframework.hateoas.RepresentationModel;
 import javax.persistence.*;
 import java.time.LocalDate;
 
@@ -13,19 +11,19 @@ import java.time.LocalDate;
 @Table(name = "transactions")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Audited
-public class Transaction {
+public class Transaction extends RepresentationModel<Transaction> {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer idTransaction;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JsonBackReference(value="transaction-boardgame")
+	@JsonIgnoreProperties({"transactionList"})
+	@ManyToOne
 	@JoinColumn(name = "id_boardgame")
 	BoardGame boardGame;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JsonBackReference(value="transaction-client")
+	@JsonIgnoreProperties({"transactionList"})
+	@ManyToOne
 	@JoinColumn(name = "id_client")
 	Client client;
 

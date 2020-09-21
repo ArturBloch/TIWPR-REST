@@ -1,24 +1,20 @@
 package com.tiwpr.rest.models;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import org.hibernate.envers.Audited;
 import org.springframework.format.annotation.DateTimeFormat;
-
-import javax.validation.constraints.NotNull;
+import org.springframework.hateoas.RepresentationModel;
 
 import javax.persistence.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 @Entity
 @Table(name = "boardGames")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Audited
-public class BoardGame {
+public class BoardGame extends RepresentationModel<BoardGame> {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,8 +32,6 @@ public class BoardGame {
 	@DateTimeFormat(pattern = "yyyy-MM-dd")
 	private LocalDate dateOfPremiere;
 
-	private double price;
-
 	private Integer copiesToSell;
 
 	private Integer copiesToLend;
@@ -45,8 +39,8 @@ public class BoardGame {
 	@Version
 	private Integer version;
 
+	@JsonIgnoreProperties({"boardGame"})
 	@OneToMany(mappedBy = "boardGame")
-	@JsonManagedReference(value="transaction-boardgame")
 	private List<Transaction> transactionList = new ArrayList<>();
 
 	public BoardGame() {
@@ -100,14 +94,6 @@ public class BoardGame {
 		this.dateOfPremiere = dateOfPremiere;
 	}
 
-	public double getPrice() {
-		return price;
-	}
-
-	public void setPrice(double price) {
-		this.price = price;
-	}
-
 	public Integer getCopiesToSell() {
 		return copiesToSell;
 	}
@@ -140,14 +126,14 @@ public class BoardGame {
 		this.transactionList = transactionList;
 	}
 
-	public boolean lend(int amount){
-		if(copiesToLend == null || copiesToLend < amount) return false;
+	public boolean lend(int amount) {
+		if (copiesToLend == null || copiesToLend < amount) return false;
 		copiesToLend = copiesToLend - amount;
 		return true;
 	}
 
-	public boolean sell(int amount){
-		if(copiesToSell == null || copiesToSell < amount) return false;
+	public boolean sell(int amount) {
+		if (copiesToSell == null || copiesToSell < amount) return false;
 		copiesToSell = copiesToSell - amount;
 		return true;
 	}
@@ -161,7 +147,6 @@ public class BoardGame {
 			", author='" + author + '\'' +
 			", category='" + category + '\'' +
 			", dateOfPremiere=" + dateOfPremiere +
-			", price=" + price +
 			", copiesToSell=" + copiesToSell +
 			", copiesToLend=" + copiesToLend +
 			", version=" + version +

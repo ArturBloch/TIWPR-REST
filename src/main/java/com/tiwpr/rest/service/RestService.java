@@ -11,6 +11,9 @@ import org.hibernate.envers.AuditReaderFactory;
 import org.hibernate.envers.RevisionType;
 import org.hibernate.envers.query.AuditEntity;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -121,11 +124,6 @@ public class RestService {
 								boardGame.get().setDateOfPremiere(LocalDate.parse(value.toString(), formatter));
 							}
 							break;
-						case "price":
-							if (value != null) {
-								boardGame.get().setPrice(Double.valueOf(value.toString()));
-							}
-							break;
 						case "copiesToSell":
 							boardGame.get().setCopiesToSell((Integer) value);
 							break;
@@ -142,17 +140,17 @@ public class RestService {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	public List<Transaction> getOldTransactions(int page) {
+	public Page<Transaction> getOldTransactions(Pageable page) {
 		AuditReader reader = AuditReaderFactory.get(entityManager);
-		return (List<Transaction>) reader.createQuery()
-										 .forRevisionsOfEntity(Transaction.class, true, true)
-										 .add(AuditEntity.revisionNumber().maximize().computeAggregationInInstanceContext())
-										 .add(AuditEntity.revisionType().eq(RevisionType.DEL))
-										 .addOrder(AuditEntity.revisionNumber().desc())
-										 .setFirstResult(page * 20)
-										 .setMaxResults(20)
-										 .getResultList();
+		List<Transaction> transactionList = (List<Transaction>) reader.createQuery()
+																	  .forRevisionsOfEntity(Transaction.class, true, true)
+																	  .add(AuditEntity.revisionNumber()
+																					  .maximize()
+																					  .computeAggregationInInstanceContext())
+																	  .add(AuditEntity.revisionType().eq(RevisionType.DEL))
+																	  .addOrder(AuditEntity.revisionNumber().desc())
+																	  .getResultList();
+		return new PageImpl<>(transactionList, page, transactionList.size());
 	}
 
 	public Transaction getOldTransactionWithId(int transactionId) {
@@ -171,16 +169,15 @@ public class RestService {
 	}
 
 	@SuppressWarnings("unchecked")
-	public List<Client> getOldClients(int page) {
+	public Page<Client> getOldClients(Pageable page) {
 		AuditReader reader = AuditReaderFactory.get(entityManager);
-		return (List<Client>) reader.createQuery()
+		List<Client> clientList = (List<Client>) reader.createQuery()
 									.forRevisionsOfEntity(Client.class, true, true)
 									.add(AuditEntity.revisionNumber().maximize().computeAggregationInInstanceContext())
 									.add(AuditEntity.revisionType().eq(RevisionType.DEL))
 									.addOrder(AuditEntity.revisionNumber().desc())
-									.setFirstResult(page * 20)
-									.setMaxResults(20)
 									.getResultList();
+		return new PageImpl<>(clientList, page, clientList.size());
 	}
 
 	public Client getClientHistoryWithId(int clientId) {
