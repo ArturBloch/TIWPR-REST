@@ -34,6 +34,7 @@ public class Transaction extends RepresentationModel<Transaction> {
 
 	private Integer amount;
 
+	@JsonIgnore
 	@Version
 	private Integer version;
 

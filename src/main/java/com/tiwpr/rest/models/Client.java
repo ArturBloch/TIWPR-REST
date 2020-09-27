@@ -29,6 +29,7 @@ public class Client extends RepresentationModel<Client> {
 	@OneToMany(mappedBy = "client")
 	private List<Transaction> transactionList = new ArrayList<>();
 
+	@JsonIgnore
 	@Version
 	private Integer version;
 

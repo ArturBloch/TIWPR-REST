@@ -1,5 +1,6 @@
 package com.tiwpr.rest.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.hibernate.envers.Audited;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -36,6 +37,7 @@ public class BoardGame extends RepresentationModel<BoardGame> {
 
 	private Integer copiesToLend;
 
+	@JsonIgnore
 	@Version
 	private Integer version;
 
@@ -44,6 +46,17 @@ public class BoardGame extends RepresentationModel<BoardGame> {
 	private List<Transaction> transactionList = new ArrayList<>();
 
 	public BoardGame() {
+	}
+
+	public BoardGame(BoardGame boardGameCopy) {
+		this.boardgameName = boardGameCopy.boardgameName;
+		this.communityRating = boardGameCopy.communityRating;
+		this.author = boardGameCopy.author;
+		this.category = boardGameCopy.category;
+		this.dateOfPremiere = boardGameCopy.dateOfPremiere;
+		this.copiesToSell = boardGameCopy.copiesToSell;
+		this.copiesToLend = boardGameCopy.copiesToLend;
+		this.transactionList = boardGameCopy.transactionList;
 	}
 
 	public Integer getIdBoardGame() {

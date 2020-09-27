@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -59,8 +60,8 @@ public class RestService {
 		} else {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This client was not found in the database");
 		}
-		if(oldTransaction.getBoardGame() != null && (oldTransaction.getBoardGame().getIdBoardGame() != newTransaction.getBoardGame().getIdBoardGame()))
-		{
+		if (oldTransaction.getBoardGame() != null && (oldTransaction.getBoardGame().getIdBoardGame() != newTransaction.getBoardGame()
+																													  .getIdBoardGame())) {
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "You can't change the board game, create a new transaction if you want" +
 				" to change this");
 		}
@@ -98,47 +99,49 @@ public class RestService {
 		return transactionRepository.save(newTransaction);
 	}
 
-	public BoardGame patchBoardGame(int id, Map<String, Object> changes) {
+	public BoardGame patchBoardGame(int id, Map<String, Object> changes, Integer etag) {
 		Optional<BoardGame> boardGame = boardGameRepository.findById(id);
 		final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 		if (boardGame.isPresent()) {
-			Integer dbVersion = boardGame.get().getVersion();
-			Integer patchVersion = (Integer) changes.get("version");
-			if (patchVersion == null || dbVersion.compareTo(patchVersion) != 0)
-				throw new ResponseStatusException(HttpStatus.CONFLICT,
-												  "This entity was modified since loaded from database or cannot be modified without version number");
+			BoardGame patchedBoardGame = new BoardGame(boardGame.get());
+			patchedBoardGame.setIdBoardGame(id);
+			patchedBoardGame.setVersion(etag);
 			changes.forEach(
 				(change, value) -> {
 					switch (change) {
 						case "boardGameName":
-							boardGame.get().setBoardgameName((String) value);
+							patchedBoardGame.setBoardgameName((String) value);
 							break;
 						case "communityRating":
 							if (value != null) {
-								boardGame.get().setCommunityRating(Double.valueOf(value.toString()));
+								patchedBoardGame.setCommunityRating(Double.valueOf(value.toString()));
 							}
 							break;
 						case "author":
-							boardGame.get().setAuthor((String) value);
+							patchedBoardGame.setAuthor((String) value);
 							break;
 						case "category":
-							boardGame.get().setCategory((String) value);
+							patchedBoardGame.setCategory((String) value);
 							break;
 						case "dateOfPremiere":
 							if (value != null) {
-								boardGame.get().setDateOfPremiere(LocalDate.parse(value.toString(), formatter));
+								patchedBoardGame.setDateOfPremiere(LocalDate.parse(value.toString(), formatter));
 							}
 							break;
 						case "copiesToSell":
-							boardGame.get().setCopiesToSell((Integer) value);
+							patchedBoardGame.setCopiesToSell((Integer) value);
 							break;
 						case "copiesToLend":
-							boardGame.get().setCopiesToLend((Integer) value);
+							patchedBoardGame.setCopiesToLend((Integer) value);
 							break;
 					}
-				}
-						   );
-			return boardGameRepository.save(boardGame.get());
+				});
+			try {
+				return boardGameRepository.save(patchedBoardGame);
+			} catch (ObjectOptimisticLockingFailureException e) {
+				System.err.println("BoardGame optimistic locking ERROR");
+				throw new ResponseStatusException(HttpStatus.CONFLICT, "This board game entity was modified since loaded from database");
+			}
 		} else {
 			System.err.println("Board game with this ID does not exist");
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This board game does not exist");
@@ -177,11 +180,11 @@ public class RestService {
 	public Page<Client> getOldClients(Pageable page) {
 		AuditReader reader = AuditReaderFactory.get(entityManager);
 		List<Client> clientList = (List<Client>) reader.createQuery()
-									.forRevisionsOfEntity(Client.class, true, true)
-									.add(AuditEntity.revisionNumber().maximize().computeAggregationInInstanceContext())
-									.add(AuditEntity.revisionType().eq(RevisionType.DEL))
-									.addOrder(AuditEntity.revisionNumber().desc())
-									.getResultList();
+													   .forRevisionsOfEntity(Client.class, true, true)
+													   .add(AuditEntity.revisionNumber().maximize().computeAggregationInInstanceContext())
+													   .add(AuditEntity.revisionType().eq(RevisionType.DEL))
+													   .addOrder(AuditEntity.revisionNumber().desc())
+													   .getResultList();
 		return new PageImpl<>(clientList, page, clientList.size());
 	}
 

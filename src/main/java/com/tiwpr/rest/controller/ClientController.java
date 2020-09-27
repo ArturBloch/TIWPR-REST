@@ -19,9 +19,11 @@ import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+
 import javax.transaction.Transactional;
 import java.util.Collections;
 import java.util.List;
@@ -46,33 +48,38 @@ public class ClientController {
 
 	@GetMapping
 	public PagedModel<EntityModel<Client>> findAll(@QuerydslPredicate(root = Client.class) Predicate predicate, Pageable page,
-		PagedResourcesAssembler<Client> pagedResourcesAssembler) {
-			Page<Client> clientPage = clientRepository.findAll(predicate, page);
-			return pagedResourcesAssembler.toModel(clientPage, clientAssembler);
+												   PagedResourcesAssembler<Client> pagedResourcesAssembler) {
+		Page<Client> clientPage = clientRepository.findAll(predicate, page);
+		return pagedResourcesAssembler.toModel(clientPage, clientAssembler);
 	}
 
 	@PostMapping
-	@ResponseStatus(HttpStatus.CREATED)
-	public EntityModel<Client> addClient() {
+	public ResponseEntity<EntityModel<Client>> addClient() {
 		Client newClient = new Client();
 		newClient = clientRepository.save(newClient);
-		return clientAssembler.toModel(newClient);
+		EntityModel<Client> clientEntity = clientAssembler.toModel(newClient);
+		return ResponseEntity.created(clientEntity.getLink("self").get().toUri()).eTag(Long.toString(newClient.getVersion())).body(clientEntity);
 	}
 
 	@GetMapping("/{id}")
-	@ResponseStatus(HttpStatus.OK)
-	public EntityModel<Client> getById(@PathVariable Integer id) {
+	public ResponseEntity<EntityModel<Client>> getById(@PathVariable Integer id) {
 		Optional<Client> findClient = clientRepository.findById(id);
 		if (findClient.isEmpty()) {
 			System.err.println("Client with this ID does not exist");
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This client does not exist");
 		}
-		return clientAssembler.toModel(findClient.get());
+		EntityModel<Client> clientEntity = clientAssembler.toModel(findClient.get());
+		return ResponseEntity.ok().eTag(Long.toString(findClient.get().getVersion())).body(clientEntity);
 	}
 
 	@DeleteMapping(value = "/{id}")
 	@ResponseStatus(HttpStatus.OK)
-	public void delete(@PathVariable Integer id) {
+	public void delete(@PathVariable Integer id, @RequestHeader("Etag") Integer etag) {
+		Optional<Client> client = clientRepository.findById(etag);
+		if(client.isEmpty()){
+			System.err.println("Client with this ID does not exist");
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This client does not exist");
+		}
 		try {
 			clientRepository.deleteById(id);
 		} catch (EmptyResultDataAccessException e) {
@@ -84,23 +91,27 @@ public class ClientController {
 
 	@PutMapping(value = "/{id}")
 	@ResponseStatus(HttpStatus.OK)
-	public EntityModel<Client> update(@PathVariable Integer id, @RequestBody Client client) {
-		if (clientRepository.findById(id).isEmpty()) {
+	public ResponseEntity<EntityModel<Client>> update(@PathVariable Integer id, @RequestBody Client client, @RequestHeader("Etag") Integer etag) {
+		Optional<Client> clientDB = clientRepository.findById(id);
+		if (clientDB.isEmpty()) {
 			System.err.println("Client with this ID does not exist");
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This client does not exist");
 		}
 		client.setIdClient(id);
+		client.setVersion(etag);
 		try {
 			System.out.println("Trying to update the client PUT REQUEST");
-			return clientAssembler.toModel(clientRepository.save(client));
+			clientRepository.save(client);
+			EntityModel<Client> clientEntity = clientAssembler.toModel(client);
+			return ResponseEntity.ok().eTag(Long.toString(client.getVersion())).body(clientEntity);
 		} catch (ObjectOptimisticLockingFailureException e) {
 			System.err.println("Client optimistic locking ERROR");
-			throw new ResponseStatusException(HttpStatus.CONFLICT, "This client entity was modified since loaded from database");
+			throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED, "This client entity was modified since loaded from database");
 		}
 	}
 
 	@Transactional
-	@PutMapping(value = "/{id}/returnAllGames")
+	@DeleteMapping(value = "/{id}/borrowTransactions")
 	@ResponseStatus(HttpStatus.OK)
 	public Client returnGames(@PathVariable Integer id) {
 		Optional<Client> client = clientRepository.findById(id);
@@ -122,8 +133,8 @@ public class ClientController {
 	public CollectionModel<EntityModel<Transaction>> getAllTransactions(@PathVariable Integer id) {
 		Optional<Client> client = clientRepository.findById(id);
 		if (client.isPresent()) {
-			return CollectionModel.of(client.get().getTransactionList().stream().map(transactionAssembler::toModel) //
-										.collect(Collectors.toList()));
+			return CollectionModel.of(client.get().getTransactionList().stream().map(transactionAssembler::toModel)
+											.collect(Collectors.toList()));
 		} else {
 			System.err.println("Client with this ID does not exist");
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This client does not exist");
